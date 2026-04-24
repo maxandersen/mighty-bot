@@ -1,4 +1,4 @@
-# Java Coding Agent — Duke Design Document
+# Java Coding Agent — Mighty (Almighty) Design Document
 
 ## Overview
 
@@ -45,21 +45,21 @@ Design goal: keep the core minimal, and push most behavior into extensions and h
 │          Host Application               │
 │  (CLI, IDE plugin, Slack bot, etc.)    │
 ├────────────────────┬────────────────────┤
-│   duke-agent       │   duke-tui         │
+│   mighty-agent     │   mighty-tui       │
 │   Sessions, tools, │   Terminal UI      │
 │   extensions       │                    │
 ├────────────────────┴────────────────────┤
-│            duke-core                    │
+│           mighty-core                   │
 │   Agent loop, tool execution, events    │
 ├─────────────────────────────────────────┤
-│             duke-ai                     │
+│            mighty-ai                    │
 │   Multi-provider LLM abstraction        │
 └─────────────────────────────────────────┘
 ```
 
 ## Module Responsibilities
 
-### `duke-ai`
+### `mighty-ai`
 
 Unified multi-provider LLM abstraction:
 
@@ -89,7 +89,7 @@ interface LlmClient {
 }
 ```
 
-### `duke-core`
+### `mighty-core`
 
 Contains the loop: prompt → LLM → tool calls → tool results → repeat.
 
@@ -110,7 +110,7 @@ Core constraints:
 - Deterministic tool execution pipeline
 - First-class event stream for extensions/hooks
 
-### `duke-agent`
+### `mighty-agent`
 
 Higher-level runtime:
 
@@ -120,7 +120,7 @@ Higher-level runtime:
 - Command routing
 - CLI entry point
 
-### `duke-tui`
+### `mighty-tui`
 
 Optional terminal UI package:
 
@@ -131,7 +131,7 @@ Optional terminal UI package:
 
 ## Lifecycle Events (Extension Bus)
 
-Events mirror pi.dev’s extensibility model and are emitted by `duke-core`.
+Events mirror pi.dev’s extensibility model and are emitted by `mighty-core`.
 
 | Event                   | Trigger timing                              | Extension control                                  |
 |-------------------------|---------------------------------------------|----------------------------------------------------|
@@ -154,22 +154,22 @@ Events mirror pi.dev’s extensibility model and are emitted by `duke-core`.
 
 Auto-discover extension source files from:
 
-- `~/.duke/extensions/` (global)
-- `.duke/extensions/` (project local)
-- explicit CLI args: `duke -e ./my-extension.java`
+- `~/.mighty/extensions/` (global)
+- `.mighty/extensions/` (project local)
+- explicit CLI args: `mighty -e ./my-extension.java`
 
 Each extension is a **JBang-compatible single-file Java source** (`//DEPS` supported).
 
 ### Extension API
 
 ```java
-//DEPS io.duke:duke-api:1.0
-import io.duke.api.*;
+//DEPS io.mighty:mighty-api:1.0
+import io.mighty.api.*;
 
-public class PermissionGate implements DukeExtension {
+public class PermissionGate implements MightyExtension {
     @Override
-    public void init(DukeAPI duke) {
-        duke.on(ToolCallEvent.class, (event, ctx) -> {
+    public void init(MightyAPI mighty) {
+        mighty.on(ToolCallEvent.class, (event, ctx) -> {
             if (event.toolName().equals("bash")
                     && event.input().contains("rm -rf")) {
                 return EventResult.block("Dangerous command blocked");
@@ -177,7 +177,7 @@ public class PermissionGate implements DukeExtension {
             return EventResult.proceed();
         });
 
-        duke.registerTool(Tool.builder()
+        mighty.registerTool(Tool.builder()
             .name("deploy")
             .description("Deploy to an environment")
             .parameter("env", Schema.string("Target environment"))
@@ -188,7 +188,7 @@ public class PermissionGate implements DukeExtension {
             })
             .build());
 
-        duke.registerCommand("/stats", "Show session statistics", (args, ctx) -> {
+        mighty.registerCommand("/stats", "Show session statistics", (args, ctx) -> {
             var usage = ctx.getContextUsage();
             ctx.ui().notify("Tokens used: " + usage.tokens());
         });
@@ -205,7 +205,7 @@ public class PermissionGate implements DukeExtension {
 - Append/replace system prompts
 - Customize compaction/summarization strategy
 - Persist extension-scoped session state
-- Render custom widgets in `duke-tui`
+- Render custom widgets in `mighty-tui`
 
 ### Hot Reload
 
@@ -222,7 +222,7 @@ On extension source change:
 
 Hooks are designed for automation, policy, and integration outside the JVM process.
 
-### Configuration (`.duke/settings.json`)
+### Configuration (`.mighty/settings.json`)
 
 ```json
 {
@@ -244,7 +244,7 @@ Hooks are designed for automation, policy, and integration outside the JVM proce
         "hooks": [
           {
             "type": "command",
-            "command": "prettier --write \"$DUKE_TOOL_INPUT_FILE_PATH\""
+            "command": "prettier --write \"$MIGHTY_TOOL_INPUT_FILE_PATH\""
           }
         ]
       }
@@ -291,7 +291,7 @@ Exit code contract:
 
 ### Storage Format
 
-Sessions are newline-delimited JSON objects (`.jsonl`) in `.duke/sessions/`.
+Sessions are newline-delimited JSON objects (`.jsonl`) in `.mighty/sessions/`.
 
 Each entry includes:
 
@@ -350,7 +350,7 @@ Packages can bundle extensions, prompts, themes, and hook defaults.
 ### Example package layout
 
 ```text
-my-duke-package/
+my-mighty-package/
 ├── extensions/
 │   └── review.java
 ├── prompts/
@@ -363,9 +363,9 @@ my-duke-package/
 ### Example package commands
 
 ```bash
-duke install git:github.com/user/duke-code-review
-duke list
-duke update
+mighty install git:github.com/user/mighty-code-review
+mighty list
+mighty update
 ```
 
 ---
@@ -382,7 +382,7 @@ duke update
 Skill bundles are loaded only when needed to reduce initial prompt size.
 
 ```text
-.duke/skills/
+.mighty/skills/
 ├── kubernetes/
 │   ├── SKILL.md
 │   └── kubectl-tool.java
@@ -414,7 +414,7 @@ Design intent:
 
 ### Phase 1 — Minimal Agent
 
-1. JBang CLI entry point (`duke.java`)
+1. JBang CLI entry point (`mighty.java`)
 2. Single provider (Anthropic) with streaming
 3. Four core tools (`read`, `write`, `edit`, `bash`)
 4. JSONL session persistence (flat)
@@ -449,7 +449,7 @@ Design intent:
 ## Non-Goals (Initial)
 
 - Built-in large tool catalog in core
-- Hardcoded provider-specific assumptions in `duke-core`
+- Hardcoded provider-specific assumptions in `mighty-core`
 - Mandatory TUI dependency for all host applications
 
 Core principle: ship a tiny stable nucleus and evolve behavior through extensions.
