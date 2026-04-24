@@ -61,17 +61,13 @@ Design goal: keep the core minimal, and push most behavior into extensions and h
 
 ### `mighty-ai`
 
-Unified multi-provider LLM abstraction:
+Quarkus + LangChain4j based AI layer:
 
-- Model-agnostic message types
+- Model-agnostic message types exposed through `mighty-ai` interfaces
 - Streaming output support
 - Tool-calling support
-- Provider adapters (Anthropic/OpenAI/Google/Ollama, etc.)
-
-Potential implementation strategies:
-
-- **LangChain4j with Quarkus** for broad provider support and mature ecosystem
-- **Thin in-house client** (Java `HttpClient`, virtual threads) for minimal footprint
+- Provider adapters via LangChain4j (Anthropic/OpenAI/Google/Ollama, etc.)
+- Quarkus-managed configuration and lifecycle wiring
 
 Illustrative API:
 
@@ -415,7 +411,7 @@ Design intent:
 ### Phase 1 — Minimal Agent
 
 1. JBang CLI entry point (`mighty.java`)
-2. Single provider (Anthropic) with streaming
+2. Quarkus + LangChain4j integration (Anthropic first) with streaming
 3. Four core tools (`read`, `write`, `edit`, `bash`)
 4. JSONL session persistence (flat)
 5. `AGENTS.md` loading
